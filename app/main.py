@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 
+from app.routers import auth, documents
+
+
 app = FastAPI(
     title="Secure RAG Chatbot",
-    description="An AI chatbot with authentication, access control and data privacy.",
-    version="0.1.0"
+    description="Secure AI Chatbot with Authentication and Access Control",
+    version="0.3.0"
 )
+
+app.include_router(auth.router)
+app.include_router(documents.router)
 
 
 @app.get("/")
@@ -17,6 +23,4 @@ def home():
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}

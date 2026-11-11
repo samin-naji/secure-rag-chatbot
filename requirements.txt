@@ -1,3 +1,10 @@
 fastapi
 uvicorn[standard]
 pydantic-settings
+SQLAlchemy
+psycopg
+Alembic
+pwdlib[argon2]
+PyJWT
+python-multipart
+email-validator
