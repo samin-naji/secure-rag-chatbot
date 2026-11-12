@@ -1,16 +1,17 @@
 from fastapi import FastAPI
 
-from app.routers import auth, documents
+from app.routers import auth, documents, admin
 
 
 app = FastAPI(
     title="Secure RAG Chatbot",
     description="Secure AI Chatbot with Authentication and Access Control",
-    version="0.3.0"
+    version="0.4.0"
 )
 
 app.include_router(auth.router)
 app.include_router(documents.router)
+app.include_router(admin.router)
 
 
 @app.get("/")
