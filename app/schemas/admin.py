@@ -9,3 +9,7 @@ class UserRoleUpdate(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
+
+class DocumentPermissionUpdate(BaseModel):
+    permission: Literal["read"]
