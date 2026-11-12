@@ -5,42 +5,23 @@ from app.models.document import Document
 from app.models.permission import DocumentPermission
 
 
-def can_access_document(
-    db: Session,
-    user: User,
-    document_id: int
-) -> bool:
-    """
-    Check whether a user can read a document.
-    """
-
-    # Admin can access all documents
-    if user.role == "admin":
-        return True
-
-    # Explicit permission is required for other users
-    permission = db.query(DocumentPermission).filter(
-        DocumentPermission.user_id == user.id,
-        DocumentPermission.document_id == document_id,
-        DocumentPermission.permission == "read"
-    ).first()
-
-    return permission is not None
-
-
 def get_accessible_documents(
     db: Session,
     user: User
 ):
     """
-    Return only documents accessible to the user.
+    Return only documents the user is authorized to read.
     """
 
-    # Admin can see all documents
+    # Admin has access to all documents
     if user.role == "admin":
-        return db.query(Document).all()
+        return (
+            db.query(Document)
+            .order_by(Document.id)
+            .all()
+        )
 
-    # Other users can only see explicitly authorized documents
+    # Other users need explicit read permission
     return (
         db.query(Document)
         .join(
@@ -51,5 +32,41 @@ def get_accessible_documents(
             DocumentPermission.user_id == user.id,
             DocumentPermission.permission == "read"
         )
+        .order_by(Document.id)
         .all()
+    )
+
+
+def get_accessible_document(
+    db: Session,
+    user: User,
+    document_id: int
+):
+    """
+    Return a document only if the user can access it.
+
+    Unauthorized and nonexistent documents both return None.
+    """
+
+    # Admin can access every document
+    if user.role == "admin":
+        return (
+            db.query(Document)
+            .filter(Document.id == document_id)
+            .first()
+        )
+
+    # Apply access control directly inside the database query
+    return (
+        db.query(Document)
+        .join(
+            DocumentPermission,
+            DocumentPermission.document_id == Document.id
+        )
+        .filter(
+            Document.id == document_id,
+            DocumentPermission.user_id == user.id,
+            DocumentPermission.permission == "read"
+        )
+        .first()
     )
