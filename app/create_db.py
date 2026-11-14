@@ -1,5 +1,11 @@
 from app.core.database import Base, engine
-from app.models import User, Document, DocumentPermission
+
+from app.models import (
+    User,
+    Document,
+    DocumentPermission,
+    DocumentChunk
+)
 
 Base.metadata.create_all(bind=engine)
 

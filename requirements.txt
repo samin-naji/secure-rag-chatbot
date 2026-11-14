@@ -8,3 +8,5 @@ pwdlib[argon2]
 PyJWT
 python-multipart
 email-validator
+python-multipart
+pypdf
