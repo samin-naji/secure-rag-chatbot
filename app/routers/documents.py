@@ -29,6 +29,8 @@ from app.services.document_extraction import (
 
 from app.services.text_chunking import split_text_into_chunks
 
+from app.services.embedding_service import generate_embeddings
+
 
 router = APIRouter(
     prefix="/documents",
@@ -66,7 +68,10 @@ def upload_document(
                 detail="Document contains no valid chunks."
             )
 
-        # Step 4: Create document record
+        # Step 4: Generate embeddings for all chunks
+        embeddings = generate_embeddings(chunks)
+
+        # Step 5: Create document record
         document = Document(
             filename=file.filename,
             department=current_user.department,
@@ -76,19 +81,22 @@ def upload_document(
         db.add(document)
         db.flush()
 
-        # Step 5: Create document chunks
+        # Step 6: Create document chunks with embeddings
         document_chunks = [
             DocumentChunk(
                 document_id=document.id,
                 chunk_index=index,
-                content=chunk
+                content=chunk,
+                embedding=embedding
             )
-            for index, chunk in enumerate(chunks)
+            for index, (chunk, embedding) in enumerate(
+                zip(chunks, embeddings)
+            )
         ]
 
         db.add_all(document_chunks)
 
-        # Step 6: Commit transaction
+        # Step 7: Commit transaction
         db.commit()
         db.refresh(document)
 
@@ -101,12 +109,15 @@ def upload_document(
         }
 
     except DocumentExtractionError as exc:
+        db.rollback()
+
         raise HTTPException(
             status_code=400,
             detail=str(exc)
         )
 
     except HTTPException:
+        db.rollback()
         raise
 
     except Exception:
@@ -114,7 +125,7 @@ def upload_document(
 
         raise HTTPException(
             status_code=500,
-            detail="An error occurred while saving the document."
+            detail="An error occurred while processing or saving the document."
         )
 
     finally:
