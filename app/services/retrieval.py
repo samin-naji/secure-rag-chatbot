@@ -1,45 +1,57 @@
-from sqlalchemy import select
+from sqlalchemy import select, exists
 from sqlalchemy.orm import Session
 
-from app.models.document_chunk import DocumentChunk
 from app.models.document import Document
+from app.models.document_chunk import DocumentChunk
+from app.models.permission import DocumentPermission
+from app.models.user import User
 
 from app.services.embedding_service import generate_embedding
 
 
 def search_similar_chunks(
     db: Session,
+    user: User,
     query: str,
     top_k: int = 5
 ) -> list[dict]:
     """
-    Find the most semantically similar document chunks.
+    Secure semantic search.
 
-    INTERNAL TESTING ONLY:
-    This function does not apply document-level permissions.
-    Do not expose it through a public API before adding
-    authorization filters in the database query.
+    Admin:
+        Can search all documents.
+
+    Other users:
+        Can search only documents with explicit read permission.
+
+    Access control is enforced inside the database query.
     """
 
-    # Step 1: Validate input
+    # Step 1: Validate user
+    if user is None or not user.is_active:
+        raise ValueError("Active user is required.")
+
+    # Step 2: Validate query
     if not isinstance(query, str) or not query.strip():
         raise ValueError("Search query cannot be empty.")
 
-    if not isinstance(top_k, int) or isinstance(top_k, bool):
-        raise ValueError("top_k must be an integer.")
-
-    if not 1 <= top_k <= 100:
+    # Step 3: Validate top_k
+    if (
+        not isinstance(top_k, int)
+        or isinstance(top_k, bool)
+        or not 1 <= top_k <= 100
+    ):
         raise ValueError("top_k must be between 1 and 100.")
 
-    # Step 2: Generate embedding for user query
+    # Step 4: Generate query embedding
     query_embedding = generate_embedding(query)
 
-    # Step 3: Calculate cosine distance
+    # Step 5: Calculate cosine distance
     distance = DocumentChunk.embedding.cosine_distance(
         query_embedding
     ).label("distance")
 
-    # Step 4: Build semantic search query
+    # Step 6: Build base query
     statement = (
         select(
             DocumentChunk,
@@ -53,14 +65,32 @@ def search_similar_chunks(
         .where(
             DocumentChunk.embedding.is_not(None)
         )
+    )
+
+    # Step 7: Apply document-level access control
+    if user.role != "admin":
+
+        permission_check = exists(
+            select(1).where(
+                DocumentPermission.user_id == user.id,
+                DocumentPermission.document_id == Document.id,
+                DocumentPermission.permission == "read"
+            )
+        )
+
+        statement = statement.where(permission_check)
+
+    # Step 8: Sort and limit results
+    statement = (
+        statement
         .order_by(distance.asc())
         .limit(top_k)
     )
 
-    # Step 5: Execute query
+    # Step 9: Execute query
     results = db.execute(statement).all()
 
-    # Step 6: Format results
+    # Step 10: Format results
     search_results = []
 
     for chunk, filename, cosine_distance in results:
