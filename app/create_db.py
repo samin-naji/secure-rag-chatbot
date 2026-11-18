@@ -4,7 +4,8 @@ from app.models import (
     User,
     Document,
     DocumentPermission,
-    DocumentChunk
+    DocumentChunk,
+    AuditLog
 )
 
 Base.metadata.create_all(bind=engine)
