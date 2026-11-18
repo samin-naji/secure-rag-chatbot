@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     secret_key: str
     access_token_expire_minutes: int = 30
 
+    gapgpt_api_key: str
+    gapgpt_base_url: str = "https://api.gapgpt.app/v1"
+    gapgpt_model: str = "gpt-4o-mini"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
