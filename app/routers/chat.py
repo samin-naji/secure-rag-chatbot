@@ -27,6 +27,8 @@ from app.services.pii_service import (
     mask_pii
 )
 
+from app.services.audit_service import log_event
+
 
 router = APIRouter(
     prefix="/chat",
@@ -110,6 +112,16 @@ def ask_question(
         )
 
     if not chunks:
+        log_event(
+            db=db,
+            user_id=current_user.id,
+            username=current_user.username,
+            event_type="chat",
+            status="success",
+            resource_type="document",
+            resource_id=None,
+        )
+
         return {
             "status": "success",
             "question": payload.question,
@@ -189,6 +201,16 @@ Content:
         }
         for chunk in chunks
     ]
+
+    log_event(
+        db=db,
+        user_id=current_user.id,
+        username=current_user.username,
+        event_type="chat",
+        status="success",
+        resource_type="document",
+        resource_id=None,
+    )
 
     return {
         "status": "success",
