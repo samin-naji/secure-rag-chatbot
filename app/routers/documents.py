@@ -31,6 +31,8 @@ from app.services.text_chunking import split_text_into_chunks
 
 from app.services.embedding_service import generate_embeddings
 
+from app.services.audit_service import log_event
+
 
 router = APIRouter(
     prefix="/documents",
@@ -100,6 +102,16 @@ def upload_document(
         db.commit()
         db.refresh(document)
 
+        log_event(
+            db=db,
+            event_type="document_upload",
+            status="success",
+            username=current_user.username,
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=document.id
+        )
+
         return {
             "message": "Document uploaded successfully.",
             "document_id": document.id,
@@ -111,6 +123,16 @@ def upload_document(
     except DocumentExtractionError as exc:
         db.rollback()
 
+        log_event(
+            db=db,
+            event_type="document_upload",
+            status="failure",
+            username=current_user.username,
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=None
+        )
+
         raise HTTPException(
             status_code=400,
             detail=str(exc)
@@ -118,10 +140,31 @@ def upload_document(
 
     except HTTPException:
         db.rollback()
+
+        log_event(
+            db=db,
+            event_type="document_upload",
+            status="failure",
+            username=current_user.username,
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=None
+        )
+
         raise
 
     except Exception:
         db.rollback()
+        
+        log_event(
+            db=db,
+            event_type="document_upload",
+            status="failure",
+            username=current_user.username,
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=None
+        )
 
         raise HTTPException(
             status_code=500,
@@ -165,10 +208,30 @@ def get_document(
     )
 
     if document is None:
+        log_event(
+            db=db,
+            event_type="document_view",
+            status="failure",
+            username=current_user.username,
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=document_id
+        )
+
         raise HTTPException(
             status_code=404,
             detail="Document not found"
         )
+
+    log_event(
+        db=db,
+        event_type="document_view",
+        status="success",
+        username=current_user.username,
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id
+    )
 
     return {
         "id": document.id,
