@@ -1,4 +1,4 @@
-from openai import OpenAI, OpenAIError
+from openai import OpenAI, OpenAIError, APITimeoutError
 
 from app.core.config import settings
 
@@ -8,11 +8,14 @@ class LLMServiceError(Exception):
     pass
 
 
-def generate_answer(
-    messages: list[dict],
-) -> str:
+class LLMTimeoutError(LLMServiceError):
+    """Raised when the LLM provider times out."""
+    pass
+
+
+def generate_answer(messages: list[dict]) -> str:
     """
-    Send messages to GapGPT and return the assistant response.
+    Send messages to GapGPT and return the answer.
     """
 
     try:
@@ -30,14 +33,24 @@ def generate_answer(
             max_tokens=200
         )
 
+        if not response.choices:
+            raise LLMServiceError(
+                "The LLM returned an invalid response."
+            )
+
         answer = response.choices[0].message.content
 
-        if not answer:
+        if not isinstance(answer, str) or not answer.strip():
             raise LLMServiceError(
                 "The LLM returned an empty response."
             )
 
-        return answer
+        return answer.strip()
+
+    except APITimeoutError as exc:
+        raise LLMTimeoutError(
+            "LLM request timed out."
+        ) from exc
 
     except LLMServiceError:
         raise
@@ -45,4 +58,9 @@ def generate_answer(
     except OpenAIError as exc:
         raise LLMServiceError(
             "Failed to communicate with GapGPT."
+        ) from exc
+
+    except (AttributeError, IndexError, TypeError) as exc:
+        raise LLMServiceError(
+            "The LLM returned an invalid response."
         ) from exc

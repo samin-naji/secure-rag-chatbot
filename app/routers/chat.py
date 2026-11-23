@@ -29,6 +29,12 @@ from app.services.pii_service import (
 
 from app.services.audit_service import log_event
 
+from app.services.llm_service import (
+    generate_answer,
+    LLMServiceError,
+    LLMTimeoutError
+)
+
 
 router = APIRouter(
     prefix="/chat",
@@ -76,6 +82,13 @@ def test_gapgpt_connection(
             "provider": "GapGPT",
             "answer": answer
         }
+
+    
+    except LLMTimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="LLM provider timed out."
+        )
 
     except LLMServiceError:
         raise HTTPException(
@@ -189,6 +202,13 @@ Content:
     # Step 5: Generate answer
     try:
         answer = generate_answer(messages)
+
+    
+    except LLMTimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="LLM provider timed out."
+        )
 
     except LLMServiceError:
         raise HTTPException(
