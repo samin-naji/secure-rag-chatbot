@@ -242,7 +242,7 @@ def ask_question(
 
     # Step 5: Generate answer
     try:
-        answer = generate_answer(messages)
+        answer = mask_pii(generate_answer(messages))
 
     
     except LLMTimeoutError:
