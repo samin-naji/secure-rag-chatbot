@@ -11,9 +11,17 @@ def log_event(
     user_id: int | None = None,
     resource_type: str | None = None,
     resource_id: int | None = None,
+    commit: bool = True,
 ) -> AuditLog:
     """
-    Create and persist a security audit event.
+    Create a security audit event.
+
+    commit=True:
+        Persist the event immediately.
+
+    commit=False:
+        Add the event to the current transaction.
+        The caller must commit or rollback.
     """
 
     audit_log = AuditLog(
@@ -27,8 +35,10 @@ def log_event(
 
     try:
         db.add(audit_log)
-        db.commit()
-        db.refresh(audit_log)
+
+        if commit:
+            db.commit()
+            db.refresh(audit_log)
 
         return audit_log
 

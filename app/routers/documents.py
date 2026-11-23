@@ -98,10 +98,8 @@ def upload_document(
 
         db.add_all(document_chunks)
 
-        # Step 7: Commit transaction
-        db.commit()
-        db.refresh(document)
-
+        
+        # Step 7: Add audit log to the same transaction
         log_event(
             db=db,
             event_type="document_upload",
@@ -109,16 +107,24 @@ def upload_document(
             username=current_user.username,
             user_id=current_user.id,
             resource_type="document",
-            resource_id=document.id
+            resource_id=document.id,
+            commit=False
         )
 
-        return {
+        # Prepare response before commit
+        result = {
             "message": "Document uploaded successfully.",
             "document_id": document.id,
             "filename": document.filename,
             "department": document.department,
             "total_chunks": len(document_chunks)
         }
+
+        # Step 8: Commit document, chunks and audit log together
+        db.commit()
+
+        return result
+
 
     except DocumentExtractionError as exc:
         db.rollback()
