@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
+from app.services.audit_service import log_event
 
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -55,7 +56,7 @@ def get_current_user(
 
 def require_role(*allowed_roles: str):
     """
-    Create a dependency that allows only specified roles.
+    Allow only specified roles and audit denied access.
     """
 
     if not allowed_roles:
@@ -71,9 +72,21 @@ def require_role(*allowed_roles: str):
         )
 
     def role_checker(
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
     ):
         if current_user.role not in allowed_roles:
+
+            log_event(
+                db=db,
+                event_type="access_denied",
+                status="failure",
+                username=current_user.username,
+                user_id=current_user.id,
+                resource_type="role",
+                resource_id=None
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action."
@@ -82,3 +95,4 @@ def require_role(*allowed_roles: str):
         return current_user
 
     return role_checker
+
