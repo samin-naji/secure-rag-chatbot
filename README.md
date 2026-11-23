@@ -2,7 +2,7 @@
 
 A security-focused **Retrieval-Augmented Generation (RAG)** API built with FastAPI, PostgreSQL, pgvector, local sentence embeddings, and GapGPT. The project demonstrates how authentication, document-level authorization, privacy controls, and audit logging can be incorporated into an LLM application.
 
-> **Project status:** Educational/portfolio implementation. Core user flows and selected security scenarios have been manually tested. This is **not** a production security certification or a claim of comprehensive prompt-injection resistance.
+> **Project status:** Core user flows and selected security scenarios have been manually tested. This is **not** a production security certification or a claim of comprehensive prompt-injection resistance.
 
 ## Features
 
@@ -167,7 +167,7 @@ These checks are examples, **not a complete automated regression or penetration 
 - Source references identify retrieved chunks; they are not independently verified claim-level citations.
 - Prompt-injection defenses reduce risk but do not eliminate it.
 - The demo is intended for local development and learning. Production use would require further security reviews, automated tests, deployment hardening, secrets management, monitoring, and backup/recovery planning.
-- Use **synthetic** secrets and personal data for demonstrations. Do not commit `.env`, database dumps, real user data, or private documents.
+
 
 ## Project layout
 
@@ -180,10 +180,7 @@ app/
   services/             # Extraction, embeddings, retrieval, PII, LLM, audit
 scripts/                # Embedding backfill and retrieval checks
 tests/                  # Test scripts, fixtures, optional manual SQL checks
-requirements.txt        # Direct dependencies (if maintained)
-requirements-lock.txt   # Pinned installed environment (if generated)
+requirements.txt        # Direct dependencies
+requirements-lock.txt   # Pinned installed environment
 ```
 
-## License
-
-No license is specified yet. Add a `LICENSE` file before presenting this repository as openly licensed.
