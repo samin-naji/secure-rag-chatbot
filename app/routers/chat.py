@@ -41,6 +41,9 @@ router = APIRouter(
     tags=["Chat"]
 )
 
+MAX_CONTEXT_CHARS = 6000
+MAX_CHUNK_CHARS = 1800
+
 
 class ConnectionTestRequest(BaseModel):
     prompt: str = Field(
@@ -142,22 +145,50 @@ def ask_question(
             "sources": []
         }
 
-    # Step 2: Mask retrieved document content
+    
+    # Step 2: Build a size-limited, PII-masked context
     context_parts = []
+    used_chunks = []
+    current_length = 0
 
     for chunk in chunks:
         safe_content = mask_pii(chunk["content"])
-
         safe_filename = mask_pii(chunk["filename"])
 
-        context_parts.append(
-            f"""
-Source: {safe_filename}
-Chunk ID: {chunk['chunk_id']}
+        # Limit each individual chunk
+        safe_content = safe_content[:MAX_CHUNK_CHARS]
 
-Content:
-{safe_content}
-"""
+        header = (
+            f"Source: {safe_filename}\n"
+            f"Chunk ID: {chunk['chunk_id']}\n\n"
+            "Content:\n"
+        )
+
+        # Account for separators between context parts
+        separator_length = 2 if context_parts else 0
+
+        remaining = (
+            MAX_CONTEXT_CHARS
+            - current_length
+            - separator_length
+            - len(header)
+        )
+
+        if remaining <= 0:
+            break
+
+        safe_content = safe_content[:remaining]
+
+        if not safe_content.strip():
+            continue
+
+        context_part = header + safe_content
+
+        context_parts.append(context_part)
+        used_chunks.append(chunk)
+
+        current_length += (
+            separator_length + len(context_part)
         )
 
     context = "\n\n".join(context_parts)
@@ -226,7 +257,7 @@ Content:
                 chunk["similarity"], 4
             )
         }
-        for chunk in chunks
+        for chunk in used_chunks
     ]
 
     log_event(
