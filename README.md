@@ -118,17 +118,62 @@ Open:
 
 ## Key endpoints
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/auth/register` | Register a user |
-| `POST` | `/auth/login` | Obtain an access token |
-| `POST` | `/documents/upload` | Upload a PDF/TXT document (admin) |
-| `POST` | `/chat/ask` | Ask a question with permission-filtered RAG |
-| `POST` | `/chat/connection-test` | Test the LLM provider (admin) |
-| `GET` | `/admin/access-check` | Verify admin-only access |
-| `GET` | `/health` | Basic health check |
+### Authentication
 
-Additional document and administrative permission endpoints are available in Swagger UI.
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/auth/register` | Register a new user account | Public |
+| `POST` | `/auth/login` | Authenticate a user and obtain a JWT access token | Public |
+| `GET` | `/auth/me` | Retrieve the authenticated user's profile | Authenticated user |
+
+### User Administration
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `GET` | `/admin/access-check` | Verify administrator-level access | Admin |
+| `GET` | `/admin/users` | List registered users | Admin |
+| `PATCH` | `/admin/users/{user_id}/role` | Update a user's role | Admin |
+| `PATCH` | `/admin/users/{user_id}/status` | Activate or deactivate a user account | Admin |
+
+### Document Management
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/documents/upload` | Upload a PDF or TXT document, extract and chunk its content, and generate embeddings | Admin |
+| `GET` | `/documents/` | List documents accessible to the authenticated user | Authenticated user |
+| `GET` | `/documents/{document_id}` | Retrieve a document if the user has permission to access it | Authorized user |
+
+### Document-Level Permissions
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `GET` | `/admin/documents/{document_id}/permissions` | List permissions assigned to a document | Admin |
+| `PUT` | `/admin/documents/{document_id}/permissions/{user_id}` | Grant a user permission to access a document | Admin |
+| `DELETE` | `/admin/documents/{document_id}/permissions/{user_id}` | Revoke a user's permission to access a document | Admin |
+
+### Secure RAG Chat
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/chat/ask` | Ask questions using permission-filtered semantic retrieval, PII masking, and LLM-based answer generation | Authenticated user |
+| `POST` | `/chat/connection-test` | Test connectivity with the GapGPT LLM provider | Admin |
+
+### System
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `GET` | `/` | Retrieve the API welcome response | Public |
+| `GET` | `/health` | Check the basic application health status | Public |
+
+### API Documentation
+
+Interactive API documentation is available through FastAPI's Swagger UI:
+
+`http://127.0.0.1:8000/docs`
+
+Protected endpoints require JWT Bearer authentication. Role-based access control (RBAC) and document-level permissions are enforced by the backend.
+
+**Security note:** Document retrieval and RAG queries are restricted according to user permissions. Unauthorized document access is rejected without exposing restricted document content. Security-relevant operations are recorded through the audit logging system.
 
 ### Example RAG request
 
@@ -158,7 +203,7 @@ The following outcomes were observed during manual development tests:
 | Provider error | A test of an invalid LLM model returned a generic error message rather than exposing the underlying provider error |
 | End-to-end chat auditing | Successful `POST /chat/ask` returned HTTP `200` and produced a corresponding `chat` audit event |
 
-These checks are examples, **not a complete automated regression or penetration test suite**. See `tests/` for available local test fixtures and `tests/test_queries.sql` for manual database verification queries, if those files have been added to the working repository.
+These checks are examples, **not a complete automated regression or penetration test suite**. See `tests/` for available local test fixtures and `tests/test_queries.sql` for manual database verification queries.
 
 ## Privacy and limitations
 
